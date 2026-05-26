@@ -57,6 +57,7 @@ targets:
         INFOPLIST_FILE: FitGentlyNutrition/Info.plist
         SWIFT_EMIT_LOC_STRINGS: YES
         TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_ON_DEMAND_RESOURCES: NO
 
     entitlements:
       path: FitGentlyNutrition/FitGentlyNutrition.entitlements

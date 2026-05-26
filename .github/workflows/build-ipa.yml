@@ -117,6 +117,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             ONLY_ACTIVE_ARCH=NO \
+            ENABLE_ON_DEMAND_RESOURCES=NO \
             2>&1 | tee $RUNNER_TEMP/build.log | grep -E "error:|warning:|Build succeeded|Build FAILED" || true
           # Fail loudly if xcodebuild itself failed
           grep -q "Build succeeded" $RUNNER_TEMP/build.log || \
