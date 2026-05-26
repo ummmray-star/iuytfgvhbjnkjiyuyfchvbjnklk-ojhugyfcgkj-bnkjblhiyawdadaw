@@ -1,0 +1,177 @@
+name: Build IPA
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  XCODE_VERSION: "16.0"
+  SCHEME: "FitGentlyNutrition"
+  BUNDLE_ID: "com.fitgently.nutrition"
+
+jobs:
+  build:
+    name: Build & Export IPA
+    runs-on: macos-15
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Select Xcode version ───────────────────────────────────────────────
+      - name: Select Xcode ${{ env.XCODE_VERSION }}
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
+
+      # ── 3. Install XcodeGen ───────────────────────────────────────────────────
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # ── 4. Generate Xcode project ─────────────────────────────────────────────
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+
+      # ── 5. Cache Swift packages ───────────────────────────────────────────────
+      - name: Cache derived data
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-derived-${{ hashFiles('project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-derived-
+
+      # ── 6a. SIGNED BUILD (runs only when signing secrets are configured) ───────
+      - name: Install signing certificate
+        if: ${{ env.HAS_SIGNING_SECRETS == 'true' }}
+        env:
+          HAS_SIGNING_SECRETS: ${{ secrets.CERTIFICATES_P12 != '' }}
+          CERTIFICATE_BASE64: ${{ secrets.CERTIFICATES_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATES_P12_PASSWORD }}
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
+          PROFILE_PATH=$RUNNER_TEMP/profile.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+
+          echo -n "$CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode -o $PROFILE_PATH
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security import $CERTIFICATE_PATH -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PROFILE_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: Build & archive (signed)
+        if: ${{ env.HAS_SIGNING_SECRETS == 'true' }}
+        env:
+          HAS_SIGNING_SECRETS: ${{ secrets.CERTIFICATES_P12 != '' }}
+          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+        run: |
+          xcodebuild archive \
+            -project FitGentlyNutrition.xcodeproj \
+            -scheme ${{ env.SCHEME }} \
+            -destination "generic/platform=iOS" \
+            -archivePath $RUNNER_TEMP/FitGentlyNutrition.xcarchive \
+            -configuration Release \
+            DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM \
+            CODE_SIGN_STYLE=Automatic \
+            | xcpretty
+
+      - name: Export IPA (signed, ad-hoc)
+        if: ${{ env.HAS_SIGNING_SECRETS == 'true' }}
+        env:
+          HAS_SIGNING_SECRETS: ${{ secrets.CERTIFICATES_P12 != '' }}
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/FitGentlyNutrition.xcarchive \
+            -exportPath $RUNNER_TEMP/ipa-signed \
+            -exportOptionsPlist ExportOptions.plist \
+            | xcpretty
+          echo "SIGNED_IPA_PATH=$RUNNER_TEMP/ipa-signed/FitGentlyNutrition.ipa" >> $GITHUB_ENV
+
+      # ── 6b. UNSIGNED BUILD (always runs, no Apple account needed) ─────────────
+      - name: Build & archive (unsigned — for AltStore / sideloading)
+        run: |
+          xcodebuild archive \
+            -project FitGentlyNutrition.xcodeproj \
+            -scheme ${{ env.SCHEME }} \
+            -destination "generic/platform=iOS" \
+            -archivePath $RUNNER_TEMP/FitGentlyNutrition-unsigned.xcarchive \
+            -configuration Release \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            | xcpretty
+
+      - name: Package unsigned IPA
+        run: |
+          ARCHIVE=$RUNNER_TEMP/FitGentlyNutrition-unsigned.xcarchive
+          APP_PATH=$(find "$ARCHIVE/Products/Applications" -name "*.app" | head -1)
+          mkdir -p $RUNNER_TEMP/ipa-unsigned/Payload
+          cp -r "$APP_PATH" $RUNNER_TEMP/ipa-unsigned/Payload/
+          cd $RUNNER_TEMP/ipa-unsigned
+          zip -r FitGentlyNutrition-unsigned.ipa Payload
+          echo "UNSIGNED_IPA_PATH=$RUNNER_TEMP/ipa-unsigned/FitGentlyNutrition-unsigned.ipa" >> $GITHUB_ENV
+
+      # ── 7. Upload artifacts ────────────────────────────────────────────────────
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: FitGentlyNutrition-unsigned-${{ github.sha }}
+          path: ${{ env.UNSIGNED_IPA_PATH }}
+          retention-days: 30
+
+      - name: Upload signed IPA
+        if: ${{ env.HAS_SIGNING_SECRETS == 'true' }}
+        env:
+          HAS_SIGNING_SECRETS: ${{ secrets.CERTIFICATES_P12 != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: FitGentlyNutrition-signed-${{ github.sha }}
+          path: ${{ env.SIGNED_IPA_PATH }}
+          retention-days: 30
+
+      # ── 8. Create GitHub Release on version tags ──────────────────────────────
+      - name: Create release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ${{ env.UNSIGNED_IPA_PATH }}
+          name: FitGently Nutrition ${{ github.ref_name }}
+          body: |
+            ## FitGently Nutrition ${{ github.ref_name }}
+
+            ### Install Options
+
+            **Option A — AltStore (free, no developer account needed):**
+            1. Download `FitGentlyNutrition-unsigned.ipa`
+            2. Open AltStore on your iPhone → tap + → choose the IPA
+            3. Re-sign every 7 days with AltStore
+
+            **Option B — Sideloadly (free):**
+            1. Download the IPA and [Sideloadly](https://sideloadly.io)
+            2. Connect iPhone, drag the IPA into Sideloadly, click Start
+            3. Sign with your Apple ID (no developer account required)
+
+            **Option C — Ad-hoc (Apple Developer account):**
+            Add signing secrets to the repo and push a new tag.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 9. Cleanup keychain ────────────────────────────────────────────────────
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/signing.keychain-db 2>/dev/null || true
