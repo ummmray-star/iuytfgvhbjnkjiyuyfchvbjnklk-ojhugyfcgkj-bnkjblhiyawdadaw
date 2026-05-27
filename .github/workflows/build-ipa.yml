@@ -30,6 +30,7 @@ jobs:
 
       - name: Build app (unsigned)
         run: |
+          set -o pipefail
           xcodebuild build \
             -project FitGentlyNutrition.xcodeproj \
             -scheme ${{ env.SCHEME }} \
@@ -40,13 +41,28 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             ENABLE_ON_DEMAND_RESOURCES=NO \
-            | grep -E "error:|Build succeeded|Build FAILED" || true
+            DEPLOYMENT_POSTPROCESSING=YES \
+            STRIP_INSTALLED_PRODUCT=NO \
+            2>&1 | tee build.log | grep -E "error:|Build succeeded|Build FAILED" || true
+          grep -q "Build succeeded" build.log || { echo "--- FULL LOG ---"; cat build.log; exit 1; }
 
       - name: Find .app
         run: |
           APP_PATH="$(find build/Build/Products/Release-iphoneos -maxdepth 2 -name '*.app' | head -n 1)"
           echo "Found: $APP_PATH"
           echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
+          echo "--- .app contents ---"
+          ls -lh "$APP_PATH"
+
+      - name: Verify Info.plist exists
+        run: |
+          if [ ! -f "$APP_PATH/Info.plist" ]; then
+            echo "ERROR: Info.plist missing from .app"
+            echo "Contents of .app:"
+            find "$APP_PATH" -maxdepth 2 | head -40
+            exit 1
+          fi
+          echo "Info.plist found ✓"
 
       - name: Package IPA
         run: |
