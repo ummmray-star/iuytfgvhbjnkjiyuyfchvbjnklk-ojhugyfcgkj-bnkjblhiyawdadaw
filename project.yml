@@ -15,7 +15,6 @@ settings:
     SWIFT_VERSION: "5.9"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     ENABLE_PREVIEWS: YES
-    ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
 
 targets:
   FitGentlyNutrition:
@@ -26,9 +25,6 @@ targets:
       - path: FitGentlyNutrition
         excludes:
           - "**/*.md"
-
-    resources:
-      - path: FitGentlyNutrition/Resources/Assets.xcassets
 
     info:
       path: FitGentlyNutrition/Info.plist
@@ -53,7 +49,6 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.fitgently.nutrition
         DEVELOPMENT_TEAM: $(DEVELOPMENT_TEAM)
         CODE_SIGN_STYLE: Automatic
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_FILE: FitGentlyNutrition/Info.plist
         SWIFT_EMIT_LOC_STRINGS: YES
         TARGETED_DEVICE_FAMILY: "1"
