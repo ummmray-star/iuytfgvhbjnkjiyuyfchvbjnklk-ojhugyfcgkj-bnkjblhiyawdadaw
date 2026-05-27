@@ -7,35 +7,35 @@ struct ContentView: View {
         @Bindable var state = appState
 
         TabView(selection: $state.selectedTab) {
-            Tab("Home", systemImage: "house.fill", value: .home) {
-                NavigationStack {
-                    HomeView()
-                }
+            NavigationStack {
+                HomeView()
             }
+            .tabItem { Label("Home", systemImage: "house.fill") }
+            .tag(AppTab.home)
 
-            Tab("Meals", systemImage: "fork.knife", value: .meals) {
-                NavigationStack {
-                    MealsView()
-                }
+            NavigationStack {
+                MealsView()
             }
+            .tabItem { Label("Meals", systemImage: "fork.knife") }
+            .tag(AppTab.meals)
 
-            Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: .progress) {
-                NavigationStack {
-                    ProgressTabView()
-                }
+            NavigationStack {
+                ProgressTabView()
             }
+            .tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }
+            .tag(AppTab.progress)
 
-            Tab("Plans", systemImage: "list.clipboard.fill", value: .plans) {
-                NavigationStack {
-                    PlansView()
-                }
+            NavigationStack {
+                PlansView()
             }
+            .tabItem { Label("Plans", systemImage: "list.clipboard.fill") }
+            .tag(AppTab.plans)
 
-            Tab("Settings", systemImage: "gearshape.fill", value: .settings) {
-                NavigationStack {
-                    SettingsView()
-                }
+            NavigationStack {
+                SettingsView()
             }
+            .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+            .tag(AppTab.settings)
         }
         .tint(FGColors.accent)
     }
