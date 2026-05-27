@@ -1,140 +1,121 @@
 import SwiftUI
 
+// Simple 3-slide tour — no forced tapping interactions.
+// Each slide explains a feature; user taps "Next" to advance.
 struct InteractiveTutorialView: View {
     @Bindable var viewModel: OnboardingViewModel
-    @State private var tutorialStep = 0
-    @State private var demoGlasses = 0
-    @State private var demoFoodSelected = false
+    @State private var slideIndex = 0
+
+    private let slides: [TourSlide] = [
+        TourSlide(
+            emoji: "🍽️",
+            title: "Log Your Meals",
+            body: "Tap the green + button at the bottom of the screen any time you eat. Choose your foods — it only takes a few seconds.",
+            accentColor: FGColors.accent
+        ),
+        TourSlide(
+            emoji: "💧",
+            title: "Track Your Water",
+            body: "Tap + on the Water card each time you drink a glass. Your goal is 8 cups a day — every sip counts!",
+            accentColor: FGColors.hydrationBlue
+        ),
+        TourSlide(
+            emoji: "💡",
+            title: "Check Your Progress",
+            body: "The Home screen shows how you're doing each day. The app will give you gentle reminders and encouragement.",
+            accentColor: FGColors.warmOrange
+        ),
+    ]
 
     var body: some View {
-        VStack(spacing: FGSpacing.xl) {
+        VStack(spacing: 0) {
             Spacer()
 
-            VStack(spacing: FGSpacing.lg) {
-                Text("Quick Tour")
+            // Slide content
+            slideView(slides[slideIndex])
+                .animation(FGAnimations.gentle, value: slideIndex)
+
+            Spacer()
+
+            // Dot indicators
+            HStack(spacing: 10) {
+                ForEach(0..<slides.count, id: \.self) { i in
+                    Circle()
+                        .fill(i == slideIndex ? FGColors.accent : FGColors.divider)
+                        .frame(width: i == slideIndex ? 10 : 8, height: i == slideIndex ? 10 : 8)
+                        .animation(FGAnimations.gentle, value: slideIndex)
+                }
+            }
+            .padding(.bottom, FGSpacing.lg)
+
+            // Navigation buttons
+            bottomNav
+        }
+    }
+
+    @ViewBuilder
+    private func slideView(_ slide: TourSlide) -> some View {
+        VStack(spacing: FGSpacing.xl) {
+            // Big emoji illustration
+            ZStack {
+                Circle()
+                    .fill(slide.accentColor.opacity(0.12))
+                    .frame(width: 130, height: 130)
+                Text(slide.emoji)
+                    .font(.system(size: 64))
+            }
+
+            VStack(spacing: FGSpacing.md) {
+                Text(slide.title)
                     .font(FGTypography.title)
                     .foregroundStyle(FGColors.textPrimary)
+                    .multilineTextAlignment(.center)
 
-                Group {
-                    switch tutorialStep {
-                    case 0:
-                        tutorialHydration
-                    case 1:
-                        tutorialMeal
-                    default:
-                        tutorialComplete
-                    }
-                }
-                .transition(.asymmetric(
-                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                    removal: .move(edge: .leading).combined(with: .opacity)
-                ))
+                Text(slide.body)
+                    .font(FGTypography.body)
+                    .foregroundStyle(FGColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(5)
+                    .padding(.horizontal, FGSpacing.screenPadding)
             }
+        }
+        .padding(.horizontal, FGSpacing.screenPadding)
+        .id(slideIndex) // forces redraw on change for transition
+    }
+
+    private var bottomNav: some View {
+        HStack(spacing: FGSpacing.md) {
+            Button("Skip") { viewModel.skip() }
+                .font(FGTypography.body)
+                .foregroundStyle(FGColors.textSecondary)
+                .frame(minHeight: FGSpacing.touchTarget)
 
             Spacer()
 
-            HStack {
-                Button("Skip") { viewModel.skip() }
-                    .font(FGTypography.body)
-                    .foregroundStyle(FGColors.textSecondary)
-
-                Spacer()
-            }
-            .padding(.horizontal, FGSpacing.screenPadding)
-            .padding(.bottom, FGSpacing.xxl)
-        }
-    }
-
-    private var tutorialHydration: some View {
-        VStack(spacing: FGSpacing.lg) {
-            Text("Try tapping to add water")
-                .font(FGTypography.headline)
-                .foregroundStyle(FGColors.textSecondary)
-
-            FGCard {
-                VStack(spacing: FGSpacing.md) {
-                    HStack {
-                        Image(systemName: "drop.fill")
-                            .foregroundStyle(FGColors.hydrationBlue)
-                        Text("Hydration")
-                            .font(FGTypography.headline)
-                            .foregroundStyle(FGColors.textPrimary)
-                        Spacer()
-                    }
-
-                    FGGlassCounter(
-                        current: demoGlasses,
-                        goal: 8,
-                        onAdd: {
-                            demoGlasses += 1
-                            if demoGlasses >= 3 {
-                                withAnimation(FGAnimations.gentle) {
-                                    tutorialStep = 1
-                                }
-                            }
-                        },
-                        onRemove: { demoGlasses = max(0, demoGlasses - 1) }
-                    )
+            if slideIndex < slides.count - 1 {
+                FGButton("Next", icon: "arrow.right") {
+                    withAnimation(FGAnimations.gentle) { slideIndex += 1 }
+                    HapticService.selection()
                 }
-            }
-            .padding(.horizontal, FGSpacing.screenPadding)
-
-            Text("Tap + three times to continue")
-                .font(FGTypography.caption)
-                .foregroundStyle(FGColors.accent)
-        }
-    }
-
-    private var tutorialMeal: some View {
-        VStack(spacing: FGSpacing.lg) {
-            Text("Tap a food to log it")
-                .font(FGTypography.headline)
-                .foregroundStyle(FGColors.textSecondary)
-
-            HStack(spacing: FGSpacing.md) {
-                ForEach(CommonFood.all.prefix(3)) { food in
-                    FGFoodButton(
-                        food: food,
-                        isSelected: demoFoodSelected && food.name == "Eggs",
-                        action: {
-                            demoFoodSelected = true
-                            HapticService.success()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                                withAnimation(FGAnimations.gentle) {
-                                    tutorialStep = 2
-                                }
-                            }
-                        }
-                    )
+                .frame(maxWidth: 160)
+            } else {
+                FGButton("Let's Go!", icon: "checkmark") {
+                    viewModel.advance()
                 }
+                .frame(maxWidth: 200)
             }
-            .padding(.horizontal, FGSpacing.screenPadding)
-
-            Text("Tap any food to continue")
-                .font(FGTypography.caption)
-                .foregroundStyle(FGColors.accent)
         }
+        .padding(.horizontal, FGSpacing.screenPadding)
+        .padding(.vertical, FGSpacing.md)
+        .background(FGColors.background)
     }
+}
 
-    private var tutorialComplete: some View {
-        VStack(spacing: FGSpacing.lg) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 56, weight: .light))
-                .foregroundStyle(FGColors.accent)
+// MARK: - Model
 
-            Text("You're a natural!")
-                .font(FGTypography.title)
-                .foregroundStyle(FGColors.textPrimary)
-
-            Text("That's all you need to know.\nLet's get started.")
-                .font(FGTypography.body)
-                .foregroundStyle(FGColors.textSecondary)
-                .multilineTextAlignment(.center)
-
-            FGButton("Continue", icon: "arrow.right") {
-                viewModel.advance()
-            }
-            .frame(maxWidth: 200)
-        }
-    }
+private struct TourSlide {
+    let emoji: String
+    let title: String
+    let body: String
+    let accentColor: Color
 }

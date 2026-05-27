@@ -5,53 +5,67 @@ struct LogMealSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: FGSpacing.xl) {
+            VStack(spacing: 0) {
                 Spacer()
 
-                Text("How would you like to log?")
-                    .font(FGTypography.title)
-                    .foregroundStyle(FGColors.textPrimary)
-                    .multilineTextAlignment(.center)
+                VStack(spacing: FGSpacing.lg) {
+                    // Header
+                    VStack(spacing: FGSpacing.sm) {
+                        Text("Add a Meal")
+                            .font(FGTypography.title)
+                            .foregroundStyle(FGColors.textPrimary)
 
-                VStack(spacing: FGSpacing.md) {
-                    NavigationLink {
-                        ManualMealView(onSave: { dismiss() })
-                    } label: {
-                        LogOptionCard(
-                            icon: "hand.tap.fill",
-                            title: "Choose Foods",
-                            subtitle: "Pick from common foods",
-                            color: FGColors.accent
-                        )
+                        Text("How would you like to log it?")
+                            .font(FGTypography.body)
+                            .foregroundStyle(FGColors.textSecondary)
                     }
 
-                    NavigationLink {
-                        PhotoCaptureView(onSave: { dismiss() })
-                    } label: {
-                        LogOptionCard(
-                            icon: "camera.fill",
-                            title: "Take a Photo",
-                            subtitle: "Snap a picture of your meal",
-                            color: FGColors.hydrationBlue
-                        )
+                    // Options
+                    VStack(spacing: FGSpacing.md) {
+                        NavigationLink {
+                            ManualMealView(onSave: { dismiss() })
+                        } label: {
+                            LogOptionCard(
+                                icon: "hand.tap.fill",
+                                title: "Choose Foods",
+                                subtitle: "Tap to pick what you ate",
+                                color: FGColors.accent
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        NavigationLink {
+                            PhotoCaptureView(onSave: { dismiss() })
+                        } label: {
+                            LogOptionCard(
+                                icon: "camera.fill",
+                                title: "Take a Photo",
+                                subtitle: "Snap a picture of your meal",
+                                color: FGColors.hydrationBlue
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
+                    .padding(.horizontal, FGSpacing.screenPadding)
                 }
-                .padding(.horizontal, FGSpacing.screenPadding)
 
                 Spacer()
+
+                // Cancel
+                Button("Cancel") { dismiss() }
+                    .font(FGTypography.body)
+                    .foregroundStyle(FGColors.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: FGSpacing.touchTarget)
+                    .padding(.bottom, FGSpacing.lg)
             }
             .background(FGColors.background)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .font(FGTypography.body)
-                        .foregroundStyle(FGColors.textSecondary)
-                }
-            }
+            .navigationBarHidden(true)
         }
     }
 }
+
+// MARK: - LogOptionCard
 
 private struct LogOptionCard: View {
     let icon: String
@@ -64,10 +78,9 @@ private struct LogOptionCard: View {
             ZStack {
                 Circle()
                     .fill(color.opacity(0.15))
-                    .frame(width: 56, height: 56)
-
+                    .frame(width: 64, height: 64)
                 Image(systemName: icon)
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: 28, weight: .semibold))
                     .foregroundStyle(color)
             }
 
@@ -85,11 +98,12 @@ private struct LogOptionCard: View {
 
             Image(systemName: "chevron.right")
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(FGColors.textSecondary)
+                .foregroundStyle(FGColors.textSecondary.opacity(0.5))
         }
         .padding(FGSpacing.lg)
+        .frame(minHeight: 90)
         .background(FGColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: FGSpacing.cardRadius, style: .continuous))
-        .fgCardShadow()
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
     }
 }

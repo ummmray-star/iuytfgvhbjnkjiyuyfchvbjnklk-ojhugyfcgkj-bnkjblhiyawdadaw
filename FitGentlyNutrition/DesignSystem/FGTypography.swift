@@ -9,5 +9,5 @@ enum FGTypography {
     static let caption = Font.system(size: 16, weight: .regular, design: .rounded)
     static let captionBold = Font.system(size: 16, weight: .semibold, design: .rounded)
     static let scoreDisplay = Font.system(size: 64, weight: .bold, design: .rounded)
-    static let scoreLabel = Font.system(size: 14, weight: .medium, design: .rounded)
+    static let scoreLabel = Font.system(size: 16, weight: .medium, design: .rounded)
 }
