@@ -10,6 +10,11 @@ final class ProgressViewModel {
     var averageScore: Int = 0
     var totalMealsThisWeek: Int = 0
 
+    // Simple display values — HealthKit integration adds real data in a future update
+    var stepsToday: Int = 0
+    var weightDisplay: String = "—"
+    var waterDisplay: String = "0 cups"
+
     func refresh(meals: [MealEntry], hydrationEntries: [HydrationEntry]) {
         let today = Date.now.startOfDay
         let scoringService = NutritionScoringService()
@@ -40,6 +45,11 @@ final class ProgressViewModel {
         proteinStreak = calculateStreak(meals: meals, check: { meal in
             meal.foods.contains { $0.category == .protein }
         })
+
+        let todayGlasses = hydrationEntries
+            .filter { Calendar.current.isDate($0.timestamp, inSameDayAs: today) }
+            .reduce(0) { $0 + $1.glasses }
+        waterDisplay = "\(todayGlasses) cups"
     }
 
     private func calculateStreak(meals: [MealEntry], check: (MealEntry) -> Bool) -> Int {

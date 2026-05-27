@@ -65,11 +65,9 @@ struct NutritionScoringService {
     }
 
     private func generateFeedback(total: Int, protein: Int, produce: Int, variety: Int) -> String {
-        if total >= 80 { return "Wonderful day of eating!" }
-        if total >= 60 { return "You're doing great today." }
-        if protein == 0 { return "Try adding some protein today." }
-        if produce < 10 { return "A fruit or vegetable would help." }
-        if variety < 15 { return "Try adding more variety." }
-        return "Keep going, you're on the right track!"
+        if total >= 80 { return "You're having a wonderful day! 🌟" }
+        if total >= 60 { return "You're doing well! A little more will help." }
+        if total >= 40 { return "Good start! Try adding a fruit or vegetable." }
+        return "Let's get some goodness in today. You've got this! 💚"
     }
 }

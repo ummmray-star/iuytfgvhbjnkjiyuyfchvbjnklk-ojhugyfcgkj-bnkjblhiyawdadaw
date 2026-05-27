@@ -14,7 +14,7 @@ final class AppState {
 }
 
 enum AppTab: Int, CaseIterable, Identifiable {
-    case home, meals, progress, plans, settings
+    case home, meals, progress, more
 
     var id: Int { rawValue }
 
@@ -23,8 +23,7 @@ enum AppTab: Int, CaseIterable, Identifiable {
         case .home: return "Home"
         case .meals: return "Meals"
         case .progress: return "Progress"
-        case .plans: return "Plans"
-        case .settings: return "Settings"
+        case .more: return "More"
         }
     }
 
@@ -33,8 +32,7 @@ enum AppTab: Int, CaseIterable, Identifiable {
         case .home: return "house.fill"
         case .meals: return "fork.knife"
         case .progress: return "chart.line.uptrend.xyaxis"
-        case .plans: return "list.clipboard.fill"
-        case .settings: return "gearshape.fill"
+        case .more: return "ellipsis"
         }
     }
 }

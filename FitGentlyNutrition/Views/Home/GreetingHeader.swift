@@ -12,7 +12,7 @@ struct GreetingHeader: View {
                         .font(FGTypography.title)
                         .foregroundStyle(FGColors.textPrimary)
 
-                    Text("You're doing well today.")
+                    Text("You're doing great today. 👋")
                         .font(FGTypography.body)
                         .foregroundStyle(FGColors.textSecondary)
                 }

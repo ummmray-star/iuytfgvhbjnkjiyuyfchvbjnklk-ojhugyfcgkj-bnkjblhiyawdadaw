@@ -9,6 +9,7 @@ struct HomeView: View {
 
     @State private var viewModel = HomeViewModel()
     @State private var hydrationVM = HydrationViewModel()
+    @State private var showingAddMeal = false
 
     var body: some View {
         ScrollView {
@@ -18,15 +19,25 @@ struct HomeView: View {
                     streak: viewModel.streak
                 )
 
-                NourishmentScoreView(score: viewModel.nourishmentScore)
-                    .padding(.horizontal, FGSpacing.screenPadding)
+                TodaysHealthView(
+                    score: viewModel.nourishmentScore,
+                    todayGlasses: viewModel.todayGlasses,
+                    hydrationGoal: hydrationVM.goal,
+                    mealCount: todayMealCount
+                )
+                .padding(.horizontal, FGSpacing.screenPadding)
 
                 HydrationQuickView(viewModel: hydrationVM)
                     .padding(.horizontal, FGSpacing.screenPadding)
 
-                if !viewModel.insights.isEmpty {
-                    InsightCarousel(insights: viewModel.insights)
-                }
+                WhatNextCard(
+                    score: viewModel.nourishmentScore,
+                    todayGlasses: viewModel.todayGlasses,
+                    hydrationGoal: hydrationVM.goal,
+                    mealCount: todayMealCount,
+                    onAddMeal: { showingAddMeal = true }
+                )
+                .padding(.horizontal, FGSpacing.screenPadding)
             }
             .padding(.bottom, FGSpacing.xxl)
         }
@@ -35,6 +46,13 @@ struct HomeView: View {
         .onAppear { refresh() }
         .onChange(of: meals.count) { refresh() }
         .onChange(of: hydrationEntries.count) { refresh() }
+        .sheet(isPresented: $showingAddMeal) {
+            LogMealSheet()
+        }
+    }
+
+    private var todayMealCount: Int {
+        meals.filter { Calendar.current.isDateInToday($0.timestamp) }.count
     }
 
     private func refresh() {
