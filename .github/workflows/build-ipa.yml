@@ -49,6 +49,8 @@ jobs:
             DEPLOYMENT_POSTPROCESSING=YES \
             STRIP_INSTALLED_PRODUCT=NO \
             ASSETCATALOG_COMPILER_SKIP_APP_STORE_DEPLOYMENT=YES \
+            ASSETCATALOG_COMPILER_INCLUDE_ALL_ARTWORK=NO \
+            ASSETCATALOG_COMPILER_OPTIMIZATION=time \
             2>&1 | tee build.log | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED" || true
           grep -qi "build succeeded" build.log || { echo "--- FULL LOG ---"; cat build.log; exit 1; }
 
