@@ -22,9 +22,6 @@ jobs:
       - name: Select Xcode 16.2
         run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
 
-      - name: Install iOS Simulator Runtime
-        run: xcodebuild -downloadPlatform iOS -quiet
-
       - name: Install XcodeGen
         run: brew install xcodegen
 
@@ -46,6 +43,7 @@ jobs:
             ENABLE_ON_DEMAND_RESOURCES=NO \
             DEPLOYMENT_POSTPROCESSING=YES \
             STRIP_INSTALLED_PRODUCT=NO \
+            ASSETCATALOG_COMPILER_SKIP_APP_STORE_DEPLOYMENT=YES \
             2>&1 | tee build.log | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED" || true
           grep -qi "build succeeded" build.log || { echo "--- FULL LOG ---"; cat build.log; exit 1; }
 
