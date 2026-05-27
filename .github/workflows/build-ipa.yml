@@ -46,8 +46,8 @@ jobs:
             ENABLE_ON_DEMAND_RESOURCES=NO \
             DEPLOYMENT_POSTPROCESSING=YES \
             STRIP_INSTALLED_PRODUCT=NO \
-            2>&1 | tee build.log | grep -E "error:|Build succeeded|Build FAILED" || true
-          grep -q "Build succeeded" build.log || { echo "--- FULL LOG ---"; cat build.log; exit 1; }
+            2>&1 | tee build.log | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED" || true
+          grep -qi "build succeeded" build.log || { echo "--- FULL LOG ---"; cat build.log; exit 1; }
 
       - name: Find .app
         run: |
