@@ -5,13 +5,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
-env:
-  SCHEME: "FitGentlyNutrition"
-
 jobs:
   build:
     name: Build & Export IPA
     runs-on: macos-15
+    timeout-minutes: 25
     permissions:
       contents: write
 
@@ -19,8 +17,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode 16.2
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+      - name: Select default Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Clear Xcode cache
+        run: |
+          rm -rf ~/Library/Developer/Xcode/DerivedData/*
+          rm -rf build
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -30,59 +35,51 @@ jobs:
 
       - name: Build app (unsigned)
         run: |
-          set -o pipefail
-          xcodebuild build \
+          set -euxo pipefail
+          xcodebuild \
             -project FitGentlyNutrition.xcodeproj \
-            -scheme ${{ env.SCHEME }} \
-            -destination "generic/platform=iOS" \
+            -scheme FitGentlyNutrition \
             -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            ENABLE_BITCODE=NO \
             ENABLE_ON_DEMAND_RESOURCES=NO \
-            DEPLOYMENT_POSTPROCESSING=YES \
-            STRIP_INSTALLED_PRODUCT=NO \
-            2>&1 | tee build.log | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED" || true
-          grep -qi "build succeeded" build.log || { echo "--- FULL LOG ---"; cat build.log; exit 1; }
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            ONLY_ACTIVE_ARCH=YES \
+            clean build
 
-      - name: Find .app
+      - name: Locate .app bundle
+        id: locate
         run: |
           APP_PATH="$(find build/Build/Products/Release-iphoneos -maxdepth 2 -name '*.app' | head -n 1)"
-          echo "Found: $APP_PATH"
-          echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
-          echo "--- .app contents ---"
-          ls -lh "$APP_PATH"
-
-      - name: Verify Info.plist exists
-        run: |
-          if [ ! -f "$APP_PATH/Info.plist" ]; then
-            echo "ERROR: Info.plist missing from .app"
-            echo "Contents of .app:"
-            find "$APP_PATH" -maxdepth 2 | head -40
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: no .app produced" >&2
+            find build -name '*.app' || true
             exit 1
           fi
-          echo "Info.plist found ✓"
+          echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found: $APP_PATH"
 
       - name: Package IPA
         run: |
           set -euxo pipefail
           rm -rf Payload
           mkdir Payload
-          cp -R "$APP_PATH" Payload/
+          cp -R "${{ steps.locate.outputs.app_path }}" Payload/
           zip -qry FitGentlyNutrition-unsigned.ipa Payload
           ls -lh FitGentlyNutrition-unsigned.ipa
 
-      - name: Delete old latest-build release
-        run: gh release delete latest-build --yes --cleanup-tag 2>/dev/null || true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create latest-build release
+      - name: Upload to GitHub Release
         run: |
-          gh release create latest-build \
+          gh release delete latest-build --yes --cleanup-tag 2>/dev/null || true
+          gh release create latest-build FitGentlyNutrition-unsigned.ipa \
             --title "Latest Build" \
-            --notes "Unsigned IPA — install via AltStore or Sideloadly. Built from commit ${{ github.sha }}." \
-            FitGentlyNutrition-unsigned.ipa
+            --notes "Unsigned IPA — install via AltStore or Sideloadly. Build #${{ github.run_number }} — $(date -u '+%Y-%m-%d %H:%M UTC')" \
+            --latest
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
